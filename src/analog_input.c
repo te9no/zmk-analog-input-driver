@@ -419,6 +419,52 @@ static int analog_input_channel_get(const struct device *dev, enum sensor_channe
     return 0;
 }
 
+// analog_input.c に追加
+static int reset_adc_sequence(const struct device *dev) {
+    struct analog_input_data *data = dev->data;
+    const struct analog_input_config *config = dev->config;
+
+    LOG_DBG("Resetting ADC sequence");
+
+    // ADCの設定をリセット
+    for (uint8_t i = 0; i < config->io_channels_len; i++) {
+        struct analog_input_io_channel ch_cfg = config->io_channels[i];
+        const struct device* adc = ch_cfg.adc_channel.dev;
+        
+        if (!device_is_ready(adc)) {
+            LOG_ERR("ADC device not ready");
+            return -ENODEV;
+        }
+
+        // ADCチャンネルを再設定
+        struct adc_channel_cfg channel_cfg = {
+            .gain = ADC_GAIN_1_6,
+            .reference = ADC_REF_INTERNAL,
+            .acquisition_time = ADC_ACQ_TIME_DEFAULT,
+            .channel_id = ch_cfg.adc_channel.channel_id,
+            #ifdef CONFIG_ADC_CONFIGURABLE_INPUTS
+                #ifdef CONFIG_ADC_NRFX_SAADC
+                    .input_positive = SAADC_CH_PSELP_PSELP_AnalogInput0 + ch_cfg.adc_channel.channel_id,
+                #else
+                    .input_positive = ch_cfg.adc_channel.channel_id,
+                #endif
+            #endif
+        };
+
+        int err = adc_channel_setup(adc, &channel_cfg);
+        if (err < 0) {
+            LOG_ERR("Failed to setup channel #%d (%d)", i, err);
+            return err;
+        }
+    }
+
+    // ADCシーケンスを再初期化
+    data->as.oversampling = 0; // nRF52840の既知の問題に対する対応
+    data->as.calibrate = true;
+
+    return 0;
+}
+
 static const struct sensor_driver_api analog_input_driver_api = {
     .attr_set = analog_input_attr_set,
     .sample_fetch = analog_input_sample_fetch,
