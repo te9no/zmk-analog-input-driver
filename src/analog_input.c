@@ -201,6 +201,7 @@ static void sampling_work_handler(struct k_work *work) {
 }
 
 // analog_input.c に追加
+static void sampling_timer_handler(struct k_timer *timer);
 static void watchdog_work_handler(struct k_work *work) {
     struct analog_input_data *data = CONTAINER_OF(work, struct analog_input_data, watchdog_work);
     uint32_t now = k_uptime_get_32();
@@ -217,9 +218,7 @@ static void watchdog_work_handler(struct k_work *work) {
     }
 }
 
-
-
-
+static void sampling_work_handler(struct k_work *work);
 static void sampling_timer_handler(struct k_timer *timer) {
     struct analog_input_data *data = CONTAINER_OF(timer, struct analog_input_data, sampling_timer);
     // LOG_DBG("sampling timer triggered");
@@ -478,7 +477,9 @@ static int analog_input_channel_get(const struct device *dev, enum sensor_channe
     return 0;
 }
 
+
 // analog_input.c に追加
+static int reset_adc_sequence(const struct device *dev);
 static int reset_adc_sequence(const struct device *dev) {
     struct analog_input_data *data = dev->data;
     const struct analog_input_config *config = dev->config;
