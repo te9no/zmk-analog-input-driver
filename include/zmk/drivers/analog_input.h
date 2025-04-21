@@ -44,6 +44,9 @@ struct analog_input_data {
     struct k_work sampling_work;
     struct k_timer sampling_timer;
     int err;
+
+    uint8_t error_count;              // エラーカウント
+    uint32_t last_successful_read;    // 最後に成功した読み取りの時刻
 };
 
 struct analog_input_io_channel { 
