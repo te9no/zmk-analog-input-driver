@@ -47,6 +47,7 @@ struct analog_input_data {
 
     uint8_t error_count;              // エラーカウント
     uint32_t last_successful_read;    // 最後に成功した読み取りの時刻
+    struct k_work_delayable watchdog_work;  // Watchdog用のwork item
 };
 
 struct analog_input_io_channel { 
