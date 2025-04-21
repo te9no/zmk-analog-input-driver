@@ -165,11 +165,41 @@ K_THREAD_STACK_DEFINE(analog_input_q_stack, CONFIG_ANALOG_INPUT_WORKQUEUE_STACK_
 
 static struct k_work_q analog_input_work_q;
 
+// analog_input.c の sampling_work_handler を修正
 static void sampling_work_handler(struct k_work *work) {
     struct analog_input_data *data = CONTAINER_OF(work, struct analog_input_data, sampling_work);
-    // LOG_DBG("sampling work triggered");
-    analog_input_report_data(data->dev);
+    int err = analog_input_report_data(data->dev);
+    
+    // エラー検出とリカバリー
+    if (err < 0) {
+        LOG_ERR("Sampling error detected (%d), attempting recovery", err);
+        
+        // エラーカウントを増やす
+        data->error_count++;
+        
+        // 連続エラーが一定回数を超えた場合
+        if (data->error_count > CONFIG_ANALOG_INPUT_ERROR_THRESHOLD) {
+            LOG_WRN("Multiple errors detected, resetting ADC");
+            
+            // ADCをリセット
+            err = reset_adc_sequence(data->dev);
+            if (err < 0) {
+                LOG_ERR("Failed to reset ADC (%d)", err);
+                // サンプリングを一時停止
+                k_timer_stop(&data->sampling_timer);
+                data->enabled = false;
+                return;
+            }
+            
+            // エラーカウントをリセット
+            data->error_count = 0;
+        }
+    } else {
+        // 正常な場合はエラーカウントをリセット
+        data->error_count = 0;
+    }
 }
+
 
 static void sampling_timer_handler(struct k_timer *timer) {
     struct analog_input_data *data = CONTAINER_OF(timer, struct analog_input_data, sampling_timer);
