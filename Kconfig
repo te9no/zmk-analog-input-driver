@@ -38,6 +38,21 @@ config ANALOG_INPUT_LOG_DBG_RAW
 config ANALOG_INPUT_LOG_DBG_REPORT
 	bool "ANALOG_INPUT debug log for REPORT value"
 
+
+config ANALOG_INPUT_ERROR_THRESHOLD
+    int "Number of consecutive errors before reset"
+    default 3
+    help
+      Number of consecutive sampling errors before triggering an ADC reset
+
+config ANALOG_INPUT_WATCHDOG_TIMEOUT_MS
+    int "Watchdog timeout in milliseconds"
+    default 1000
+    help
+      Time without successful readings before considering the ADC stuck
+
+
+
 module = ANALOG_INPUT
 module-str = ANALOG_INPUT
 source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
